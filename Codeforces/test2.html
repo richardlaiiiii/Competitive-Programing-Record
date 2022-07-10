@@ -1,0 +1,213 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>Youtube - 酷欸</title>
+    <link rel="icon" href="https://play-lh.googleusercontent.com/lMoItBgdPPVDJsNOVtP26EKHePkwBg-PkuY9NOrc-fumRtTFP4XhpUNk_22syN4Datc"/> 
+</head>
+
+<body data-rsssl=1>
+    <canvas id="myCanvas" width="1500" height="1100"></canvas>
+        
+    <script>
+        var canvas = document.getElementById('myCanvas');
+        var ctx = canvas.getContext('2d');
+        
+        var width = 1500;
+        var height = 1100;
+            
+        //marble generate
+        function marble(){
+            this.x=Math.random()*680+160;
+            this.y=30;
+            this.vx=Math.random()*2-1;
+            this.vy=Math.random()*2-1;
+            this.ay=0.005;
+        }
+        var marbles = [], marble_num = 0;
+        function init_marble(){
+            marble_num = 0
+            for(var i=0;i<31;i++){
+                marbles[marble_num++] = new marble();
+            }
+        }
+
+        //nail generate
+        function nail(x, y){
+            this.x=x;
+            this.y=y;
+        }
+        var nails = [], nail_cnt = 0;
+        var nail_row = [5,6,7,6,7,6,7];
+        for(var i=0;i<7;i++){
+            for(var j=0;j<nail_row[i];j++){
+                nails[nail_cnt++] = new nail((7-nail_row[i])*50+j*100+202, i*100+150);
+            }
+        }
+        for(var j=0;j<7;j++){
+            for(var i=0;i<11;i++){
+                nails[nail_cnt++] = new nail(i*71+145, 870+20*j);
+            }
+        }
+
+        //wooden texture generate
+        function wooden_texture(y){
+            this.x=Math.random()*725+135;
+            this.y=y;
+            this.vy=Math.random()*0.5;
+        }
+        var wooden_textures = [];
+        for(var i=0;i<100;i++){
+            wooden_textures[i] = new wooden_texture(Math.random()*1000);
+        }
+
+        function redrop(arr){
+            for(var i=0;i<arr.length;i++){
+                marbles[arr[i]-1] = new marble();
+            }
+        }
+        function pos_update(item){
+            item.x+=item.vx;
+            item.y+=item.vy;
+            item.vy+=item.ay;
+        }
+        function wall_hit(item){
+            if((item.x>840 && item.vx>0) || (item.x<160 && item.vx<0)){
+                item.vx*=-0.98;
+                if(item.y>870){
+                    item.vx*=0.9;
+                }
+            }
+            if((item.y>975 && item.vy>0) || (item.y<25 && item.vy<0)){
+                item.vy*=-0.98;
+                if(item.y>975){
+                    item.vy*=0.9;
+                }
+            }
+            if(item.y>975){
+                item.y=975;
+            }
+        }
+        function nail_hit(marble){
+            for(var i=0;i<nail_cnt;i++){
+                if((marble.x-nails[i].x)*(marble.x-nails[i].x)+(marble.y-nails[i].y)*(marble.y-nails[i].y)<=1200 && (marble.x-nails[i].x)*(marble.x-nails[i].x)+(marble.y-nails[i].y)*(marble.y-nails[i].y)>=(marble.x+marble.vx-nails[i].x)*(marble.x+marble.vx-nails[i].x)+(marble.y+marble.vy-nails[i].y)*(marble.y+marble.vy-nails[i].y)){
+                    var t = (marble.y-nails[i].y)/(marble.x-nails[i].x);
+                    var cos = (1-t*t)/(1+t*t);
+                    var sin = (2*t)/(1+t*t);
+                    var rpos = {
+                        x:(cos*marble.vx+sin*marble.vy),
+                        y:(sin*marble.vx-cos*marble.vy)
+                    }
+                    marble.vx=-0.98*rpos.x;
+                    marble.vy=-0.98*rpos.y;
+                    if(i>43){
+                        marble.vx*=0.9;
+                        marble.vy*=0.9;
+                    }
+                }
+            }
+        }
+        function marble_hit(marble1,marble2){
+            if((marble1.x-marble2.x)*(marble1.x-marble2.x)+(marble1.y-marble2.y)*(marble1.y-marble2.y)<=2500 && (marble1.x+marble1.vx-marble2.x-marble2.vx)*(marble1.x+marble1.vx-marble2.x-marble2.vx)+(marble1.y+marble1.vy-marble2.y-marble2.vy)*(marble1.y+marble1.vy-marble2.y-marble2.vy)<=(marble1.x-marble2.x)*(marble1.x-marble2.x)+(marble1.y-marble2.y)*(marble1.y-marble2.y)){
+                var rpos = {
+                    x:marble1.x-marble2.x,
+                    y:marble1.y-marble2.y
+                };
+                var v1={
+                    x:(marble1.vx*rpos.x+marble1.vy*rpos.y)/(rpos.x*rpos.x+rpos.y*rpos.y)*rpos.x,
+                    y:(marble1.vx*rpos.x+marble1.vy*rpos.y)/(rpos.x*rpos.x+rpos.y*rpos.y)*rpos.y
+                }
+                var v2={
+                    x:(marble2.vx*rpos.x+marble2.vy*rpos.y)/(rpos.x*rpos.x+rpos.y*rpos.y)*rpos.x,
+                    y:(marble2.vx*rpos.x+marble2.vy*rpos.y)/(rpos.x*rpos.x+rpos.y*rpos.y)*rpos.y
+                }
+                marble1.vx+=v2.x-v1.x;
+                marble1.vy+=v2.y-v1.y;
+                marble2.vx+=v1.x-v2.x;
+                marble2.vy+=v1.y-v2.y;
+                marble1.vx*=0.98;
+                marble1.vy*=0.98;
+                marble2.vx*=0.98;
+                marble2.vy*=0.98;
+                if(marble1.y>870){
+                    marble1.vy*=0.98;
+                }
+                if(marble2.y>870){
+                    marble2.vy*=0.98;
+                }
+                pos_update(marble1);
+                pos_update(marble2);
+            }
+        }
+        var time=0;
+        init_marble();
+        draw_rect(0,0,1000,1100,"#333333", 0, "#ffffff");
+        setInterval(function(){
+            time++;
+            if(time%2==0){
+                draw_rect(135,0,865,1000,"#dcb284", 0, "#ffffff");
+            }
+            for(var i=0;i<100;i++){
+                if(time%2==0){draw_rect(wooden_textures[i].x,wooden_textures[i].y,wooden_textures[i].x+5,Math.min(1000,wooden_textures[i].y+100),"#cca274", 0, "#cca274");}
+                wooden_textures[i].y-=wooden_textures[i].vy;
+                if(wooden_textures[i].y<-100){
+                    wooden_textures[i] = new wooden_texture(1000);
+                }
+            }
+            for(var i=0;i<marble_num;i++){
+                if(time%2==0){draw_marble(marbles[i].x, marbles[i].y, i+1);}
+                for(var j=i+1;j<marble_num;j++){
+                    marble_hit(marbles[i], marbles[j]);
+                }
+                pos_update(marbles[i]);
+                wall_hit(marbles[i]);
+                nail_hit(marbles[i]);
+            }
+            for(var i=0;i<nail_cnt;i++){
+                if(time%2==0){draw_nail(nails[i].x, nails[i].y);}
+            }
+        },1)
+        function draw_marble(x,y,i){
+            ctx.beginPath();
+            ctx.arc(x, y, 25, 0, 2 * Math.PI);
+            ctx.fillStyle="#000000";
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x, y, 24, 0, 2 * Math.PI);
+            ctx.fillStyle="#ff9922";
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x-3, y-3, 20, 0, 2 * Math.PI);
+            ctx.fillStyle="#ffbb77";
+            ctx.fill();
+            ctx.font = '20pt Calibri bold';
+            ctx.fillStyle = "#000000";
+            if(i<10){
+                ctx.fillText(i, x-8, y+10);
+            }else{
+                ctx.fillText(i, x-15, y+10);
+            }
+        }
+        function draw_nail(x,y){
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, 2 * Math.PI);
+            ctx.fillStyle="#777777";
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, 2 * Math.PI);
+            ctx.fillStyle="#555555";
+            ctx.fill();
+        }
+        function draw_rect(x1,y1,x2,y2,color,width,widthcolor){
+            ctx.beginPath();
+            ctx.rect(x1,y1,x2-x1,y2-y1);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.lineWidth = width;
+            ctx.strokeStyle = widthcolor;
+            ctx.stroke();
+        }
+    </script>
+</body>
+
+</html>
